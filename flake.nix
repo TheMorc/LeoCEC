@@ -46,8 +46,8 @@ nixosModules.default = { config, lib, pkgs, ... }:
       config = lib.mkIf cfg.enable {
         systemd.user.services.leocec = {
   description = "LeoCEC TV control service";
-  wantedBy = [ "multi-user.target" ];
-  after = [ "network.target" ];
+  wantedBy = [ "graphical-session.target" ];
+  after = [ "graphical-session.target" ];
 
   serviceConfig = {
     ExecStart = "${self.packages.${pkgs.system}.default}/bin/leocec";

@@ -30,7 +30,7 @@ pyproject = true;
 
 nixosModules.default = { config, lib, pkgs, ... }:
     let
-      cfg = config.services.cec;
+      cfg = config.services.leocec;
     in
     {
       options.services.leocec = {

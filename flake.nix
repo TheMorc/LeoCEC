@@ -45,25 +45,18 @@ nixosModules.default = { config, lib, pkgs, ... }:
 
       config = lib.mkIf cfg.enable {
         systemd.user.services.leocec = {
-          Unit = {
-            Description = "LeoCEC TV control service";
-            After = [ "graphical-session.target" ];
-          };
+  description = "LeoCEC TV control service";
+  wantedBy = [ "multi-user.target" ];
+  after = [ "network.target" ];
 
-          Service = {
-            ExecStart =
-              "${self.packages.${pkgs.system}.default}/bin/leocec";
-
-            Restart = "always";
-            Environment = {
-		PYTHONUNBUFFERED="1";
-		LEOCEC_PORT = cfg.serialPort;
-		};
-          };
-
-          Install = {
-            WantedBy = [ "default.target" ];
-          };
+  serviceConfig = {
+    ExecStart = "${self.packages.${pkgs.system}.default}/bin/leocec";
+    Restart = "always";
+    Environment = [
+      "PYTHONUNBUFFERED=1"
+      "LEOCEC_PORT=${cfg.serialPort}"
+    ];
+  };
         };
       };
     };

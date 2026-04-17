@@ -10,8 +10,9 @@
 #define CECPIN 11         // Input pin for the CEC signal
 #define OUTPUTTICKS 20000 // This defines the duration of an "output" signal, sich as a LED blink or a motor turn
 #define LEDPIN 13         // Output pin to drive a status LED
-#define ACTIVE 0          // Set to 1 to active;y reply to CEC messages
+#define ACTIVE 1          // Set to 1 to active;y reply to CEC messages
                           // Set to 0 for a passive mode (when another active CEC sink is present)
+int serialReadBytes = 0;
 
 char serialline[50];
 bool outputactive;
@@ -22,6 +23,7 @@ void send_ack(void) {
   unsigned long ticks;
 
   ticks_start = micros();
+
 
   if (ACTIVE) pinMode(CECPIN, OUTPUT); // Pull the CEC line low.
 
@@ -41,10 +43,20 @@ unsigned long wait_edge(bool e) {
   unsigned long ticks;
   unsigned long last, cec;
 
+
   last = cec = digitalRead(CECPIN);
 
   for (;;) {
     ticks = micros();
+
+  char c = Serial.read();
+    if (c == '1'){
+      command(0x40, 0x0D);
+    }else if (c == '0'){
+      command(0x40, 0x36);
+    }else if (c == '2'){
+      command2(0x40, 0x41, 0x25);
+    }
 
     last = cec;
     cec = digitalRead(CECPIN);
@@ -59,6 +71,8 @@ unsigned long wait_edge(bool e) {
         return ticks;
       }
     }
+
+    
   }
 }
 
@@ -81,7 +95,7 @@ byte recv_data_bit(void) {
     ticks = micros();
 
     /* optimal 1.05 ms */
-    if ((ticks - ticks_start) >= 1050) {
+    if ((ticks - ticks_start) >= 1150) {
       return digitalRead(CECPIN);
     }
   }
@@ -130,7 +144,6 @@ byte recv_frame(byte *pld, byte address) {
   byte bit_count;
   byte pldcnt;
   byte eom;
-
   wait_start_bit();
 
   bit_count = 9;
@@ -255,7 +268,7 @@ void send_data_bit(int8_t bit) {
 
   for (;;) {
     ticks = micros();
-    if ((ticks - ticks_start) >= 2400) { //2.4 ms
+    if ((ticks - ticks_start) >= 2000) { //2.4 ms
       break;
     }
   }
@@ -317,6 +330,30 @@ void set_system_audio_mode(byte initiator, byte destination, byte system_audio_m
   send_frame(3, pld);
   sprintf(serialline, "\n<-- %02x:72 [Set System Audio Mode]", pld[0]);
   Serial.print(serialline);
+}
+
+void command(byte initiator, byte system_power_mode) {
+  byte pld[3];
+
+  pld[0] = initiator;
+  pld[1] = system_power_mode;
+  
+  send_frame(2, pld);
+  //sprintf(serialline, "\n<-- %02x:72 [Command]", pld[0], system_power_mode);
+  //Serial.print(serialline);
+}
+
+
+void command2(byte initiator, byte system_power_mode, byte byte3) {
+  byte pld[3];
+
+  pld[0] = initiator;
+  pld[1] = system_power_mode;
+  pld[2] = byte3;
+  
+  send_frame(3, pld);
+  //sprintf(serialline, "\n<-- %02x:72 [Command]", pld[0], system_power_mode);
+  //Serial.print(serialline);
 }
 
 void report_audio_status(byte initiator, byte destination, byte audio_status) {
@@ -395,7 +432,7 @@ void setup() {
  * interrupt to turn off the port off after OUTPUTTICKS */
 ISR(TIMER1_OVF_vect)
 {
-//  noInterrupts();
+  noInterrupts();
   /* code for turning off outputs after a period of time */
   digitalWrite(LEDPIN, digitalRead(LEDPIN) ^ 1);
   if (outputactive) {
@@ -449,14 +486,14 @@ void loop() {
         break;
       case 0x71:
         Serial.print(F("[Give Audio Status]"));
-        if (ACTIVE && (destination == ADDRESS)) report_audio_status(ADDRESS, initiator, 0x32); //volume 50%, mute off
+        //if (ACTIVE && (destination == ADDRESS)) report_audio_status(ADDRESS, initiator, 0x32); //volume 50%, mute off
         break;
       case 0x72:
         Serial.print(F("[Set System Audio Mode]"));
         break;
       case 0x7d:
         Serial.print(F("[Give System Audio Mode Status]"));
-        if (ACTIVE && (destination == ADDRESS)) system_audio_mode_status(ADDRESS, initiator, 1);
+        //if (ACTIVE && (destination == ADDRESS)) system_audio_mode_status(ADDRESS, initiator, 1);
         break;
       case 0x7e:
         Serial.print(F("[System Audio Mode Status]"));

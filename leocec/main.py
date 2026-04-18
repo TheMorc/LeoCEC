@@ -15,6 +15,7 @@ class CECService:
         self.poll_executor = ThreadPoolExecutor(max_workers=1)
         self.loop = None
         self.pollingLineCount = 0
+        self.verbose = (os.getenv("LEOCEC_VERBOSE", "False").lower() == 'true')
 
     def init_serial(self):
         self.serial = serial.Serial(
@@ -68,20 +69,23 @@ class CECService:
             self.last_off_time = time.time()
 
     def _handle_serial(self, line: str):
-        print("[uart]", line)
+        if self.verbose:
+            print("[uart]", line)
         self._uart_message_handler(line)
 
     async def _poll_loop(self):
         while True:
             await asyncio.sleep(5)
-            print("[LeoCEC] previous state:", self.state)
+            if self.verbose:
+                print("[LeoCEC] previous state:", self.state)
             if self.pollingLineCount == 0:
                 self.state = "off"
             else:
                 if "transition" not in self.state:
                     self.state = "on"
 
-            print("[LeoCEC] current state:", self.state)
+            if self.verbose:
+                print("[LeoCEC] current state:", self.state)
 
             if time.time() - self.last_off_time < 15:
                 continue
